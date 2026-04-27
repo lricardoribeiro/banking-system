@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+
+  # PostgreSQL - banco de dados principal
+  # Armazena contas, lancamentos do ledger e transferencias
+  postgres:
+    image: postgres:15-alpine
+    container_name: banking-postgres
+    environment:
+      POSTGRES_DB: banking
+      POSTGRES_USER: banking_user
+      POSTGRES_PASSWORD: banking_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U banking_user -d banking"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - banking-net
+
+  # Zookeeper - necessario pelo Kafka para gerenciar metadados e eleicao de lideres
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: banking-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - banking-net
+
+  # Kafka - broker de mensagens para eventos de dominio
+  # Topicos: banking.transfers, banking.accounts, banking.transfers.DLT
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: banking-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # PLAINTEXT: acesso externo (localhost:9092) | PLAINTEXT_INTERNAL: comunicacao interna
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - banking-net
+
+  # Kafka UI - interface web para inspecionar topicos e mensagens (apenas desenvolvimento)
+  # Acesse em: http://localhost:8090
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: banking-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: banking-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    networks:
+      - banking-net
+
+  # Aplicacao Banking API
+  # Aguarda postgres e kafka estarem saudaveis antes de iniciar (depends_on com condition)
+  banking-api:
+    build: .
+    container_name: banking-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/banking
+      SPRING_DATASOURCE_USERNAME: banking_user
+      SPRING_DATASOURCE_PASSWORD: banking_pass
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      # ATENCAO: substituir por secret seguro em producao (ex: AWS Secrets Manager, Vault)
+      JWT_SECRET: dGVzdC1zZWNyZXQta2V5LWZvci1sb2NhbC1kZXYtb25seS0yNTYtYml0cw==
+      ENVIRONMENT: local
+    networks:
+      - banking-net
+    restart: on-failure:3
+
+volumes:
+  postgres_data:    # persiste dados do PostgreSQL entre reinicializacoes do container
+
+networks:
+  banking-net:
+    driver: bridge  # rede isolada para comunicacao entre os servicos

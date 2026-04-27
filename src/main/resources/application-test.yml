@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:15:///banking_test  # Testcontainers JDBC URL
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers:localhost:9092}
+  liquibase:
+    enabled: false  # Use ddl-auto in tests
+
+banking:
+  security:
+    jwt:
+      secret: dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLW9ubHktMjU2LWJpdHM=
+      expiration-ms: 60000
+      issuer: banking-system-test
+
+logging:
+  level:
+    root: WARN
+    com.banking.system: DEBUG
