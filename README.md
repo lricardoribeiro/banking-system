@@ -83,34 +83,122 @@ Isso desacopla o commit do banco da disponibilidade do Kafka.
 ## Estrutura do Projeto
 
    
+```plaintext
 src/main/java/com/banking/system/
 ├── BankingSystemApplication.java
 ├── domain/
-│   ├── account/          # Aggregate Account, Money (VO), AccountId (VO), eventos, exceções
-│   ├── ledger/           # LedgerEntry (entidade append-only), EntryType
-│   ├── transfer/         # Aggregate Transfer, TransferStatus, eventos, exceções
-│   └── shared/           # DomainEvent (interface), AggregateRoot (classe base)
+│   ├── account/
+│   │   ├── Account.java
+│   │   ├── AccountId.java
+│   │   ├── AccountStatus.java
+│   │   ├── Money.java
+│   │   ├── event/
+│   │   │   ├── AccountCreatedEvent.java
+│   │   │   ├── MoneyCreditedEvent.java
+│   │   │   └── MoneyDebitedEvent.java
+│   │   └── exception/
+│   │       ├── AccountNotActiveException.java
+│   │       ├── AccountNotFoundException.java
+│   │       ├── AccountOperationException.java
+│   │       ├── CurrencyMismatchException.java
+│   │       └── InsufficientFundsException.java
+│   ├── ledger/
+│   │   ├── EntryType.java
+│   │   ├── LedgerEntry.java
+│   │   └── LedgerEntryId.java
+│   ├── transfer/
+│   │   ├── Transfer.java
+│   │   ├── TransferId.java
+│   │   ├── TransferStatus.java
+│   │   ├── event/
+│   │   │   ├── TransferCompletedEvent.java
+│   │   │   ├── TransferFailedEvent.java
+│   │   │   └── TransferInitiatedEvent.java
+│   │   └── exception/
+│   │       ├── DuplicateTransferException.java
+│   │       └── TransferNotFoundException.java
+│   └── shared/
+│       ├── AggregateRoot.java
+│       └── DomainEvent.java
 ├── application/
-│   ├── port/in/          # Interfaces de casos de uso (entrada)
-│   ├── port/out/         # Interfaces de persistência e mensageria (saída)
-│   └── usecase/          # Implementações dos casos de uso
-│       ├── command/      # Objetos de comando (imutáveis)
-│       └── result/       # Objetos de resultado
+│   ├── port/
+│   │   ├── in/
+│   │   │   ├── CreateAccountUseCase.java
+│   │   │   ├── GetAccountBalanceUseCase.java
+│   │   │   ├── GetTransferUseCase.java
+│   │   │   └── TransferMoneyUseCase.java
+│   │   └── out/
+│   │       ├── IdempotencyPort.java
+│   │       ├── LoadAccountPort.java
+│   │       ├── LoadLedgerEntriesPort.java
+│   │       ├── LoadTransferPort.java
+│   │       ├── PublishDomainEventPort.java
+│   │       ├── SaveAccountPort.java
+│   │       ├── SaveLedgerEntryPort.java
+│   │       └── SaveTransferPort.java
+│   └── usecase/
+│       ├── CreateAccountService.java
+│       ├── GetAccountBalanceService.java
+│       ├── GetTransferService.java
+│       ├── TransferMoneyService.java
+│       ├── command/
+│       │   ├── CreateAccountCommand.java
+│       │   └── TransferMoneyCommand.java
+│       └── result/
+│           ├── AccountCreatedResult.java
+│           └── TransferResult.java
 ├── adapter/
 │   ├── in/
-│   │   ├── web/          # Controllers REST, GlobalExceptionHandler, DTOs
-│   │   └── messaging/    # Consumidores Kafka
+│   │   ├── messaging/
+│   │   │   └── TransferEventConsumer.java
+│   │   └── web/
+│   │       ├── AccountController.java
+│   │       ├── GlobalExceptionHandler.java
+│   │       ├── TransferController.java
+│   │       └── dto/
+│   │           ├── AccountBalanceResponse.java
+│   │           ├── CreateAccountRequest.java
+│   │           ├── CreateAccountResponse.java
+│   │           ├── ErrorResponse.java
+│   │           ├── TransferRequest.java
+│   │           └── TransferResponse.java
 │   └── out/
-│       ├── persistence/  # Adapters JPA, entidades, repositórios
-│       └── messaging/    # Publisher Kafka, DTOs de eventos
+│       ├── messaging/
+│       │   ├── KafkaEventPublisher.java
+│       │   └── event/
+│       │       ├── TransferCompletedKafkaEvent.java
+│       │       └── TransferInitiatedKafkaEvent.java
+│       └── persistence/
+│           ├── AccountPersistenceAdapter.java
+│           ├── IdempotencyPersistenceAdapter.java
+│           ├── LedgerPersistenceAdapter.java
+│           ├── TransferPersistenceAdapter.java
+│           ├── entity/
+│           │   ├── AccountJpaEntity.java
+│           │   ├── IdempotencyKeyJpaEntity.java
+│           │   ├── LedgerEntryJpaEntity.java
+│           │   └── TransferJpaEntity.java
+│           └── repository/
+│               ├── AccountJpaRepository.java
+│               ├── IdempotencyKeyJpaRepository.java
+│               ├── LedgerEntryJpaRepository.java
+│               └── TransferJpaRepository.java
 └── infrastructure/
-    ├── annotation/       # @UseCase, @PersistenceAdapter, @WebAdapter
-    ├── config/           # KafkaConfig, SecurityConfig, JpaConfig
-    ├── logging/          # CorrelationIdFilter (MDC)
-    └── security/         # JwtTokenProvider, JwtAuthenticationFilter
-   
-
----
+    ├── annotation/
+    │   ├── MessagingAdapter.java
+    │   ├── PersistenceAdapter.java
+    │   ├── UseCase.java
+    │   └── WebAdapter.java
+    ├── config/
+    │   ├── JpaConfig.java
+    │   ├── KafkaConfig.java
+    │   └── SecurityConfig.java
+    ├── logging/
+    │   └── CorrelationIdFilter.java
+    └── security/
+        ├── JwtAuthenticationFilter.java
+        └── JwtTokenProvider.java
+```
 
 ## Como Executar
 
