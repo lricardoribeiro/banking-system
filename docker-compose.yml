@@ -9,14 +9,14 @@ services:
     container_name: banking-postgres
     environment:
       POSTGRES_DB: banking
-      POSTGRES_USER: banking_user
-      POSTGRES_PASSWORD: banking_pass
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U banking_user -d banking"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d banking"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -92,8 +92,8 @@ services:
       - "8080:8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/banking
-      SPRING_DATASOURCE_USERNAME: banking_user
-      SPRING_DATASOURCE_PASSWORD: banking_pass
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: admin
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       # ATENCAO: substituir por secret seguro em producao (ex: AWS Secrets Manager, Vault)
       JWT_SECRET: dGVzdC1zZWNyZXQta2V5LWZvci1sb2NhbC1kZXYtb25seS0yNTYtYml0cw==

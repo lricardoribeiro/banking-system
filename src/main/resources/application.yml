@@ -8,8 +8,8 @@ spring:
 
   datasource:
     url: jdbc:postgresql://localhost:5432/banking
-    username: banking_user
-    password: ${DB_PASSWORD:banking_pass}
+    username: postgres
+    password: ${DB_PASSWORD:admin}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
